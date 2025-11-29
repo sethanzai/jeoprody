@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeopardy</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; background-color: #0d1b2a; color: white; text-align: center; margin: 0; padding: 0; }
+        #main-screen { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 20px; }
+        .category { background-color: #1b263b; padding: 20px; font-size: 1.2em; font-weight: bold; border-radius: 5px; display: flex; justify-content: center; align-items: center; min-height: 80px;}
+        .question-box { background-color: #415a77; padding: 20px; font-size: 2em; font-weight: bold; cursor: pointer; border-radius: 5px; display: flex; justify-content: center; align-items: center; height: 100px; }
+        .question-box.answered { background-color: #778da9; color: #ccc; cursor: not-allowed; }
+        #question-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); justify-content: center; align-items: center; flex-direction: column; }
+        #question-content { background-color: #e0e1dd; color: #0d1b2a; padding: 40px; border-radius: 10px; width: 80%; max-width: 800px; }
+        #question-text { font-size: 2em; margin-bottom: 20px; }
+        #answer-text { font-size: 1.5em; font-weight: bold; display: none; margin-top: 20px; }
+        .btn { padding: 10px 20px; font-size: 1em; cursor: pointer; border: none; border-radius: 5px; margin: 10px; }
+        #back-btn { background-color: #778da9; color: white; }
+        #red-btn { background-color: #c0392b; color: white; }
+        #blue-btn { background-color: #2980b9; color: white; }
+        #show-answer-btn { background-color: #27ae60; color: white; }
+        #score-container { display: flex; justify-content: center; padding: 20px; font-size: 1.5em; }
+        #red-score, #blue-score { margin: 0 20px; }
+        #timer {margin-left: 20px;color: #ffcc00;font-weight: bold;}
+
+    </style>
+</head>
+<body>
+
+    <audio id="theme-music" src="theme.mp3" autoplay loop></audio>
+    <audio id="song-audio"></audio>
+
+    <div id="score-container">
+        <div id="red-score">Team Red: 0</div>
+        <div id="blue-score">Team Blue: 0</div>
+        <div id="timer">Time Left: 30s</div>
+    </div>
+
+    <div id="main-screen"></div>
+
+    <div id="question-panel">
+        <div id="question-content">
+            <div id="question-text"></div>
+            <div id="answer-text"></div>
+            <button id="play-song-btn" class="btn" style="display:none">Play Song</button>
+            <button id="show-answer-btn" class="btn">Show Answer</button>
+            <button id="red-btn" class="btn">Team Red</button>
+            <button id="blue-btn" class="btn">Team Blue</button>
+            <button id="back-btn" class="btn">Back to Main Screen</button>
+        </div>
+    </div>
+
+    <script>
+        const mainScreen = document.getElementById('main-screen');
+        const questionPanel = document.getElementById('question-panel');
+        const questionText = document.getElementById('question-text');
+        const answerText = document.getElementById('answer-text');
+        const showAnswerBtn = document.getElementById('show-answer-btn');
+        const backBtn = document.getElementById('back-btn');
+        const redBtn = document.getElementById('red-btn');
+        const blueBtn = document.getElementById('blue-btn');
+        const redScoreElem = document.getElementById('red-score');
+        const blueScoreElem = document.getElementById('blue-score');
+        const songAudio = document.getElementById('song-audio');
+        const playSongBtn = document.getElementById('play-song-btn');
+
+        let redScore = 0;
+        let blueScore = 0;let timerInterval;
+let timeLeft = 30;
+const timerElem = document.getElementById('timer');
+
+function startTimer() {clearInterval(timerInterval); // Clear existing timer if any
+    timeLeft = 30;
+    timerElem.textContent = `Time Left: ${timeLeft}s`;
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        timerElem.textContent = `Time Left: ${timeLeft}s`;
+        if (timeLeft <= 0) {
+            clearInterval(timerInterval);
+            timerElem.textContent = "Time's up!";
+        }
+    }, 1000);
+}
+function resetTimer() {
+    clearInterval(timerInterval);
+    timeLeft = 30;
+    timerElem.textContent = `Time Left: ${timeLeft}s`;
+}
+
+
+
+        let currentQuestionValue = 0;
+        let jeopardyData = [];
+
+        // This function now parses CSV data embedded directly in the script
+        function parseLocalCSV() {
+            // PASTE YOUR CSV DATA HERE
+            const csvData = `
+Category,Question,Answer,Value
+Sino ako?,Ako ay “Ama ng lahat niyaong may  pananampalataya”,ABRAHAM,100
+Sino ako?,Ako ay isang propeta galing sa Gat-Heper. Nagkamali ako at nilulon ng malaking isda.,PROPETA JONAS,200
+Sino ako?,Ako ay isang propeta noong pahahari ni Ahab at Jezebel. Tumakbo ako sa ulan. Kahit may kahinaan ako tinulungan ako ni Jehova., PROPETA ELIAS,300
+Sino ako?,Ako ay isang ulila na naging reina. Alam ko na aking pagkatao ay naging mas mahalaga kaysa sa aking physical na kagandahan.,QUEEN ESTHER,400
+Sino ako?,"“Namatay ang kapatid ko pero binuhay muli siya. Masipag ako sa hospitality sa bahay pero pinayuhan ako ni Jesus.“",MARTHA,500
+IMITATE THEIR FAITH,"“Siya Bagaman Namatay Siya ay Nagsasalita Pa”",ABEL,100
+IMITATE THEIR FAITH,Siya ay “Lumakad na Kasama ng Tunay na Diyos”,NOE,200
+IMITATE THEIR FAITH,IBINUHOS NIYA SA DIYOS ANG LAMAN NG KANIYANG PUSO,Hana,300
+IMITATE THEIR FAITH,Pinaglabanan Niya ang Takot at Pag-aalinlangan,Apostle Pedro,400
+IMITATE THEIR FAITH,Naghintay Siya at Naging Mapagbantay,Propeta Elias,500
+UMAWIT NG MASAYA,SING ALONG,"Salamat Jehova AWIT 46",100
+UMAWIT NG MASAYA,SING ALONG,Tutulungan Ka Niya AWIT 38,200
+UMAWIT NG MASAYA,SING ALONG,Tayo Ba’y Kanino? AWIT #40,300
+UMAWIT NG MASAYA,SING ALONG,"Tayo’y Isa Na AWIT 132",400
+UMAWIT NG MASAYA,SING ALONG,Buhay na Walang Hanggan—Sa Wakas! AWIT 140,500
+BIBLE QUOTES,"“Magpakarunong ka anak ko at pasayahin mo ang puso ko Para may maisagot ako sa tumutuya sa akin.”",Kawikaan 27:11,100
+BIBLE QUOTES,"“Malaman nawa ng mga tao na ikaw na ang pangalan ay Jehova Ikaw lang ang Kataas-taasan sa buong lupa.”",Awit 83:18,200
+BIBLE QUOTES,TAUNANG TEKSTO PARA SA 2025: “Ibigay ninyo kay Jehova ang kaluwalhatiang nararapat sa pangalan niya.” ,Awit 96:8,300
+BIBLE QUOTES,"“Dahil ang salita ng Diyos ay buháy at malakas at mas matalas kaysa sa anumang espada na magkabila ang talim at sa talas nito ay kaya nitong paghiwalayin ang panlabas at panloob na pagkatao at ang mga kasukasuan at mga utak sa buto at kaya nitong unawain ang mga kaisipan at intensiyon ng puso.”",Hebreo 4:12,400
+BIBLE QUOTES,“At dapat mong ibigin si Jehova na iyong Diyos nang buong puso mo at nang buong kaluluwa mo at nang buong pag-iisip mo at nang buong lakas mo.’”,Marcos 12:30,500
+JW/NUMBER,BILANG NA AAKYAT SA LANGIT KASAMA NI JESUS BILANG HARI,"144000",100
+JW/NUMBER,Show Video,2023 “Maging Matiisin”! na Kombensiyon,200
+JW/NUMBER,Ang Bibliya ay binubuo ng __ na maliliit na aklat,66 Hinati ito sa dalawang bahagi: ang Kasulatang Hebreo-Aramaiko(“Lumang Tipan”) at ang Griegong Kasulatan (“Bagong Tipan”) ,300
+JW/NUMBER,"Dalawang bagong miyembro ng Lupong Tagapamahala noon October 5-2024",Brother Jody Jedele & Brother Jacob Rumph,400
+JW/NUMBER,Bilang na pinahirang brother ang bumubuo ngayon sa Lupong Tagapamahala,11,500
+            `;
+
+            // .trim() removes leading/trailing whitespace, .split() creates an array of rows
+            // .slice(1) skips the header row
+            jeopardyData = csvData.trim().split('\n').slice(1).map(row => {
+                // Here we split by comma, but handle potential commas inside the answer
+                const parts = row.split(',');
+                const value = parseInt(parts[parts.length - 1]);
+                const answer = parts[parts.length - 2];
+                const question = parts[parts.length - 3];
+                const category = parts.slice(0, parts.length - 3).join(',');
+                return { Category: category, Question: question, Answer: answer, Value: value };
+            });
+
+            renderBoard();
+        }
+
+
+        function renderBoard() {
+            // Clear existing board
+            mainScreen.innerHTML = '';
+
+            // Build unique categories, exclude the OMIYA TAGALOG column and limit to 5 columns
+            const categories = [...new Set(jeopardyData.map(item => item.Category))]
+                .filter(c => String(c).trim() !== 'OMIYA TAGALOG')
+                .slice(0, 5);
+
+            // Render category headers
+            categories.forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.classList.add('category');
+                categoryDiv.textContent = category;
+                mainScreen.appendChild(categoryDiv);
+            });
+
+            // Render exactly 5 rows per category (100..500)
+            for (let i = 0; i < 5; i++) {
+                categories.forEach(category => {
+                    const value = (i + 1) * 100;
+                    const questionBox = document.createElement('div');
+                    questionBox.classList.add('question-box');
+                    questionBox.textContent = `$${value}`;
+                    questionBox.dataset.category = category;
+                    questionBox.dataset.value = value;
+                    questionBox.addEventListener('click', showQuestion);
+                    mainScreen.appendChild(questionBox);
+                });
+            }
+        }
+
+        function showQuestion(event) {
+            if (event.target.classList.contains('answered')) return;
+
+            const { category, value } = event.target.dataset;
+            currentQuestionValue = parseInt(value);
+            const questionData = jeopardyData.find(item => item.Category === category && item.Value === currentQuestionValue);
+
+            if (questionData) {
+                questionText.textContent = questionData.Question;
+                answerText.textContent = `Answer: ${questionData.Answer}`;
+                answerText.style.display = 'none';
+                questionPanel.style.display = 'flex';startTimer();
+                event.target.classList.add('answered');
+                event.target.textContent = ''; // Clear the dollar value
+                // If this is the UMAWIT NG MASAYA category, try to set and play the matching song
+                setSongForQuestion(questionData);
+            }
+        }
+
+        // Determine if a song file matches the question (UMAWIT NG MASAYA). If found, set audio src and play.
+        function setSongForQuestion(questionData) {
+            // Hide and stop any previous song by default
+            playSongBtn.style.display = 'none';
+            if (!songAudio.paused) {
+                songAudio.pause();
+                songAudio.currentTime = 0;
+            }
+
+            if (!questionData || questionData.Category !== 'UMAWIT NG MASAYA') return;
+
+            // Try to find an AWIT number in the Answer text, like 'AWIT 46' or 'AWIT #40'
+            const match = String(questionData.Answer).match(/AWIT\s*#?\s*(\d{1,3})/i);
+            if (!match) return;
+
+            const num = match[1].padStart(3, '0');
+            const src = `songs/${num}.mp3`;
+
+            // Set the source and attempt to play. If file not found, console will show an error.
+            songAudio.src = src;
+            songAudio.load();
+            // Show the play button and start playing automatically (if allowed by browser)
+            playSongBtn.textContent = 'Pause Song';
+            playSongBtn.style.display = 'inline-block';
+            songAudio.play().catch(err => {
+                // Autoplay may be blocked; set button to show Play instead
+                playSongBtn.textContent = 'Play Song';
+            });
+        }
+
+        // Toggle play/pause when the play button is clicked
+        playSongBtn.addEventListener('click', () => {
+            if (songAudio.src === '') return;
+            if (songAudio.paused) {
+                songAudio.play();
+                playSongBtn.textContent = 'Pause Song';
+            } else {
+                songAudio.pause();
+                playSongBtn.textContent = 'Play Song';
+            }
+        });
+
+        showAnswerBtn.addEventListener('click', () => {
+            answerText.style.display = 'block';
+            resetTimer();
+        });
+
+        backBtn.addEventListener('click', () => {
+            questionPanel.style.display = 'none';
+            resetTimer(); // Reset when returning to main
+        });
+
+
+        redBtn.addEventListener('click', () => {
+            redScore += currentQuestionValue;
+            updateScores();
+            questionPanel.style.display = 'none';
+            resetTimer();
+        });
+
+        blueBtn.addEventListener('click', () => {
+            blueScore += currentQuestionValue;
+            updateScores();
+            questionPanel.style.display = 'none';
+            resetTimer();
+        });
+
+        function updateScores() {
+            redScoreElem.textContent = `Team Red: ${redScore}`;
+            blueScoreElem.textContent = `Team Blue: ${blueScore}`;
+        }
+
+        // Call the local parsing function instead of fetching the file
+        parseLocalCSV();
+
+
+    </script>
+
+</body>
+</html>
