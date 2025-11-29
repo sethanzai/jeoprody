@@ -28,7 +28,6 @@
 <body>
 
     <audio id="theme-music" src="theme.mp3" autoplay loop></audio>
-    <audio id="song-audio"></audio>
 
     <div id="score-container">
         <div id="red-score">Team Red: 0</div>
@@ -42,7 +41,6 @@
         <div id="question-content">
             <div id="question-text"></div>
             <div id="answer-text"></div>
-            <button id="play-song-btn" class="btn" style="display:none">Play Song</button>
             <button id="show-answer-btn" class="btn">Show Answer</button>
             <button id="red-btn" class="btn">Team Red</button>
             <button id="blue-btn" class="btn">Team Blue</button>
@@ -61,8 +59,6 @@
         const blueBtn = document.getElementById('blue-btn');
         const redScoreElem = document.getElementById('red-score');
         const blueScoreElem = document.getElementById('blue-score');
-        const songAudio = document.getElementById('song-audio');
-        const playSongBtn = document.getElementById('play-song-btn');
 
         let redScore = 0;
         let blueScore = 0;let timerInterval;
@@ -107,18 +103,18 @@ IMITATE THEIR FAITH,Siya ay “Lumakad na Kasama ng Tunay na Diyos”,NOE,200
 IMITATE THEIR FAITH,IBINUHOS NIYA SA DIYOS ANG LAMAN NG KANIYANG PUSO,Hana,300
 IMITATE THEIR FAITH,Pinaglabanan Niya ang Takot at Pag-aalinlangan,Apostle Pedro,400
 IMITATE THEIR FAITH,Naghintay Siya at Naging Mapagbantay,Propeta Elias,500
-UMAWIT NG MASAYA,SING ALONG,"Salamat Jehova AWIT 46",100
-UMAWIT NG MASAYA,SING ALONG,Tutulungan Ka Niya AWIT 38,200
-UMAWIT NG MASAYA,SING ALONG,Tayo Ba’y Kanino? AWIT #40,300
-UMAWIT NG MASAYA,SING ALONG,"Tayo’y Isa Na AWIT 132",400
-UMAWIT NG MASAYA,SING ALONG,Buhay na Walang Hanggan—Sa Wakas! AWIT 140,500
+UMAWIT NG MASAYA,Ano ang title ng awit ito? "Salamat Jehova sa araw-araw. Sa ’mi’y pinasikat ang ’yong tanglaw.","Salamat Jehova AWIT 46",100
+UMAWIT NG MASAYA,Ano ang title ng awit ito? "May dahilan ang Diyos noong tinawag ka",Tutulungan Ka Niya AWIT 38,200
+UMAWIT NG MASAYA,Ano ang title ng awit ito? "Ikaw ba’y kanino? At sino ba ang diyos mo?",Tayo Ba’y Kanino? AWIT #40,300
+UMAWIT NG MASAYA,Ano ang title ng awit ito? "Di na ako nag-iisa. Ngayo’y laging may katuwang na.","Tayo’y Isa Na AWIT 132",400
+UMAWIT NG MASAYA,Ano ang title ng awit ito? "Tingnan mo O kay ganda mga tao’y payapa",Buhay na Walang Hanggan—Sa Wakas! AWIT 140,500
 BIBLE QUOTES,"“Magpakarunong ka anak ko at pasayahin mo ang puso ko Para may maisagot ako sa tumutuya sa akin.”",Kawikaan 27:11,100
 BIBLE QUOTES,"“Malaman nawa ng mga tao na ikaw na ang pangalan ay Jehova Ikaw lang ang Kataas-taasan sa buong lupa.”",Awit 83:18,200
 BIBLE QUOTES,TAUNANG TEKSTO PARA SA 2025: “Ibigay ninyo kay Jehova ang kaluwalhatiang nararapat sa pangalan niya.” ,Awit 96:8,300
 BIBLE QUOTES,"“Dahil ang salita ng Diyos ay buháy at malakas at mas matalas kaysa sa anumang espada na magkabila ang talim at sa talas nito ay kaya nitong paghiwalayin ang panlabas at panloob na pagkatao at ang mga kasukasuan at mga utak sa buto at kaya nitong unawain ang mga kaisipan at intensiyon ng puso.”",Hebreo 4:12,400
 BIBLE QUOTES,“At dapat mong ibigin si Jehova na iyong Diyos nang buong puso mo at nang buong kaluluwa mo at nang buong pag-iisip mo at nang buong lakas mo.’”,Marcos 12:30,500
 JW/NUMBER,BILANG NA AAKYAT SA LANGIT KASAMA NI JESUS BILANG HARI,"144000",100
-JW/NUMBER,Show Video,2023 “Maging Matiisin”! na Kombensiyon,200
+JW/NUMBER,Ano ang title ng 2023 Kumbensyon?,2023 “Maging Matiisin”! na Kombensiyon,200
 JW/NUMBER,Ang Bibliya ay binubuo ng __ na maliliit na aklat,66 Hinati ito sa dalawang bahagi: ang Kasulatang Hebreo-Aramaiko(“Lumang Tipan”) at ang Griegong Kasulatan (“Bagong Tipan”) ,300
 JW/NUMBER,"Dalawang bagong miyembro ng Lupong Tagapamahala noon October 5-2024",Brother Jody Jedele & Brother Jacob Rumph,400
 JW/NUMBER,Bilang na pinahirang brother ang bumubuo ngayon sa Lupong Tagapamahala,11,500
@@ -186,52 +182,11 @@ JW/NUMBER,Bilang na pinahirang brother ang bumubuo ngayon sa Lupong Tagapamahala
                 questionPanel.style.display = 'flex';startTimer();
                 event.target.classList.add('answered');
                 event.target.textContent = ''; // Clear the dollar value
-                // If this is the UMAWIT NG MASAYA category, try to set and play the matching song
-                setSongForQuestion(questionData);
+                // (song playback removed) no action required when opening question
             }
         }
 
-        // Determine if a song file matches the question (UMAWIT NG MASAYA). If found, set audio src and play.
-        function setSongForQuestion(questionData) {
-            // Hide and stop any previous song by default
-            playSongBtn.style.display = 'none';
-            if (!songAudio.paused) {
-                songAudio.pause();
-                songAudio.currentTime = 0;
-            }
-
-            if (!questionData || questionData.Category !== 'UMAWIT NG MASAYA') return;
-
-            // Try to find an AWIT number in the Answer text, like 'AWIT 46' or 'AWIT #40'
-            const match = String(questionData.Answer).match(/AWIT\s*#?\s*(\d{1,3})/i);
-            if (!match) return;
-
-            const num = match[1].padStart(3, '0');
-            const src = `songs/${num}.mp3`;
-
-            // Set the source and attempt to play. If file not found, console will show an error.
-            songAudio.src = src;
-            songAudio.load();
-            // Show the play button and start playing automatically (if allowed by browser)
-            playSongBtn.textContent = 'Pause Song';
-            playSongBtn.style.display = 'inline-block';
-            songAudio.play().catch(err => {
-                // Autoplay may be blocked; set button to show Play instead
-                playSongBtn.textContent = 'Play Song';
-            });
-        }
-
-        // Toggle play/pause when the play button is clicked
-        playSongBtn.addEventListener('click', () => {
-            if (songAudio.src === '') return;
-            if (songAudio.paused) {
-                songAudio.play();
-                playSongBtn.textContent = 'Pause Song';
-            } else {
-                songAudio.pause();
-                playSongBtn.textContent = 'Play Song';
-            }
-        });
+        // Song playback feature removed for UMAWIT NG MASAYA
 
         showAnswerBtn.addEventListener('click', () => {
             answerText.style.display = 'block';
